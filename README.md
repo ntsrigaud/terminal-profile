@@ -82,6 +82,7 @@ If this is your first time configuring zsh, restart your terminal application af
 	- Windows: `%LOCALAPPDATA%/Microsoft/Windows/Fonts`
 	- Ubuntu/Linux: `~/.local/share/fonts`
 	- macOS: `~/Library/Fonts`
+- Checks first whether the required Nerd Font is already installed and skips download/install when found
 
 You do not need to manually install fonts or change font names in terminal settings.
 

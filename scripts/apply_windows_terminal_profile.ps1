@@ -33,9 +33,57 @@ function Convert-JsoncToJson {
   return $withoutTrailingCommas
 }
 
+function Resolve-InstalledFontFace {
+  param(
+    [Parameter(Mandatory = $true)]
+    [string]$PreferredFace
+  )
+
+  Add-Type -AssemblyName System.Drawing
+  $fontCollection = New-Object System.Drawing.Text.InstalledFontCollection
+  $installedNames = @($fontCollection.Families | ForEach-Object { $_.Name })
+  $registryNames = @()
+
+  $regPath = 'HKCU:\Software\Microsoft\Windows NT\CurrentVersion\Fonts'
+  if (Test-Path -LiteralPath $regPath) {
+    $registryNames = (Get-ItemProperty -Path $regPath).PSObject.Properties.Name |
+      Where-Object { $_ -notmatch '^PS' } |
+      ForEach-Object { $_ -replace ' \(TrueType\)$', '' }
+  }
+
+  $preferredCandidates = @(
+    $PreferredFace,
+    'RobotoMono Nerd Font Mono',
+    'RobotoMono Nerd Font',
+    'Roboto Mono Nerd Font Mono',
+    'Roboto Mono Nerd Font',
+    'RobotoMonoNerdFontMono',
+    'RobotoMonoNerdFont',
+    'RobotoMono NFM',
+    'RobotoMono NF'
+  )
+
+  foreach ($candidate in $preferredCandidates) {
+    if ($installedNames -contains $candidate -or $registryNames -contains $candidate) {
+      return $candidate
+    }
+  }
+
+  $patternMatch = @($installedNames | Select-Object -Unique) |
+    Where-Object { $_ -match 'Roboto.*(Nerd ?Font|NFM|NF)' } |
+    Select-Object -First 1
+
+  if ($null -ne $patternMatch) {
+    return $patternMatch
+  }
+
+  return $PreferredFace
+}
+
 $settingsPath = Resolve-WindowsTerminalSettingsPath
 $rawSettings = Get-Content -LiteralPath $settingsPath -Raw
 $settings = (Convert-JsoncToJson -Text $rawSettings) | ConvertFrom-Json
+$resolvedFontFace = Resolve-InstalledFontFace -PreferredFace $FontFace
 
 if ($null -eq $settings.profiles) {
   $settings | Add-Member -MemberType NoteProperty -Name profiles -Value ([PSCustomObject]@{})
@@ -67,23 +115,23 @@ if ($null -eq $gitBashProfile.font -or $gitBashProfile.font -is [string]) {
 
 $fontProps = $gitBashProfile.font.PSObject.Properties.Name
 if ($fontProps -notcontains 'face') {
-  $gitBashProfile.font | Add-Member -MemberType NoteProperty -Name face -Value $FontFace
+  $gitBashProfile.font | Add-Member -MemberType NoteProperty -Name face -Value $resolvedFontFace
 }
 if ($fontProps -notcontains 'size') {
   $gitBashProfile.font | Add-Member -MemberType NoteProperty -Name size -Value $FontSize
 }
 
-$gitBashProfile.font.face = $FontFace
+$gitBashProfile.font.face = $resolvedFontFace
 $gitBashProfile.font.size = $FontSize
 
 if ($gitBashProfile.PSObject.Properties.Name -notcontains 'fontFace') {
-  $gitBashProfile | Add-Member -MemberType NoteProperty -Name fontFace -Value $FontFace
+  $gitBashProfile | Add-Member -MemberType NoteProperty -Name fontFace -Value $resolvedFontFace
 }
 if ($gitBashProfile.PSObject.Properties.Name -notcontains 'fontSize') {
   $gitBashProfile | Add-Member -MemberType NoteProperty -Name fontSize -Value $FontSize
 }
 
-$gitBashProfile.fontFace = $FontFace
+$gitBashProfile.fontFace = $resolvedFontFace
 $gitBashProfile.fontSize = $FontSize
 $gitBashProfile.colorScheme = $SchemeName
 
@@ -134,4 +182,4 @@ Set-Content -LiteralPath $settingsPath -Value $updatedJson -Encoding UTF8
 
 Write-Host "Updated Windows Terminal settings at: $settingsPath"
 Write-Host "Backup created at: $backupPath"
-Write-Host "Applied scheme '$SchemeName' to profile '$($gitBashProfile.name)'."
+Write-Host "Applied scheme '$SchemeName' to profile '$($gitBashProfile.name)' with font '$resolvedFontFace'."

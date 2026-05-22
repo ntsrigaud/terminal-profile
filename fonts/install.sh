@@ -5,6 +5,8 @@ set -euo pipefail
 NERD_FONT_NAME="${NERD_FONT_NAME:-RobotoMono}"
 NERD_FONT_ASSET="${NERD_FONT_NAME}.zip"
 NERD_FONT_URL="https://github.com/ryanoasis/nerd-fonts/releases/latest/download/${NERD_FONT_ASSET}"
+NERD_FONT_MATCH_REGEX='Roboto[ ]?Mono.*Nerd Font|RobotoMono.*NF'
+FORCE_FONT_REINSTALL="${FORCE_FONT_REINSTALL:-0}"
 
 tmp_dir="$(mktemp -d)"
 archive_path="$tmp_dir/$NERD_FONT_ASSET"
@@ -20,6 +22,30 @@ is_windows() {
     MINGW*|MSYS*|CYGWIN*) return 0 ;;
     *) return 1 ;;
   esac
+}
+
+windows_font_available() {
+  powershell.exe -NoProfile -ExecutionPolicy Bypass -Command "Add-Type -AssemblyName System.Drawing; \$fonts = New-Object System.Drawing.Text.InstalledFontCollection; \$candidates = @('RobotoMono Nerd Font Mono','RobotoMono Nerd Font','Roboto Mono Nerd Font Mono','Roboto Mono Nerd Font','RobotoMono NFM','RobotoMono NF','RobotoMonoNerdFontMono'); \$installed = \$fonts.Families | ForEach-Object { \$_.Name }; if (\$candidates | Where-Object { \$installed -contains \$_ }) { exit 0 } else { exit 1 }"
+}
+
+unix_font_available() {
+  if command -v fc-list >/dev/null 2>&1; then
+    if fc-list | grep -Eiq "$NERD_FONT_MATCH_REGEX"; then
+      return 0
+    fi
+  fi
+
+  if [ "$(uname -s)" = "Darwin" ]; then
+    if find "$HOME/Library/Fonts" -type f \( -iname '*roboto*mono*nerd*.ttf' -o -iname '*roboto*mono*nerd*.otf' \) 2>/dev/null | grep -q .; then
+      return 0
+    fi
+  else
+    if find "$HOME/.local/share/fonts" "$HOME/.fonts" -type f \( -iname '*roboto*mono*nerd*.ttf' -o -iname '*roboto*mono*nerd*.otf' \) 2>/dev/null | grep -q .; then
+      return 0
+    fi
+  fi
+
+  return 1
 }
 
 download_archive() {
@@ -76,6 +102,28 @@ install_windows_fonts() {
       New-Item -ItemType Directory -Path $target | Out-Null
     }
 
+    Add-Type -AssemblyName System.Drawing
+    Add-Type -TypeDefinition @"
+using System;
+using System.Runtime.InteropServices;
+
+public static class FontNative {
+  [DllImport("gdi32.dll", CharSet = CharSet.Unicode)]
+  public static extern int AddFontResourceW(string lpszFilename);
+
+  [DllImport("user32.dll", SetLastError = true)]
+  public static extern IntPtr SendMessageTimeout(
+    IntPtr hWnd,
+    uint Msg,
+    UIntPtr wParam,
+    IntPtr lParam,
+    uint fuFlags,
+    uint uTimeout,
+    out UIntPtr lpdwResult
+  );
+}
+"@
+
     Get-ChildItem -Path $source -Recurse -File |
       Where-Object { $_.Extension -in ".ttf", ".otf" } |
       ForEach-Object {
@@ -83,9 +131,17 @@ install_windows_fonts() {
         Copy-Item -LiteralPath $_.FullName -Destination $dest -Force
 
         $regPath = "HKCU:\Software\Microsoft\Windows NT\CurrentVersion\Fonts"
-        $fontName = [System.IO.Path]::GetFileNameWithoutExtension($_.Name) + " (TrueType)"
-        Set-ItemProperty -Path $regPath -Name $fontName -Value $_.Name -Force
+        $pfc = New-Object System.Drawing.Text.PrivateFontCollection
+        $pfc.AddFontFile($dest)
+        $familyName = if ($pfc.Families.Length -gt 0) { $pfc.Families[0].Name } else { [System.IO.Path]::GetFileNameWithoutExtension($_.Name) }
+        $fontName = $familyName + " (TrueType)"
+        Set-ItemProperty -Path $regPath -Name $fontName -Value $dest -Force
+
+        [void][FontNative]::AddFontResourceW($dest)
       }
+
+    [UIntPtr]$result = [UIntPtr]::Zero
+    [void][FontNative]::SendMessageTimeout([IntPtr]0xffff, 0x001D, [UIntPtr]::Zero, [IntPtr]::Zero, 0x0002, 5000, [ref]$result)
 
     Write-Host "Fonts copied to" $target
   }' "$extract_dir"
@@ -108,14 +164,28 @@ install_unix_fonts() {
   fi
 }
 
-download_archive
-extract_archive
-ensure_fonts_found
-
 if is_windows; then
+  if [ "$FORCE_FONT_REINSTALL" != "1" ] && windows_font_available; then
+    echo "Nerd Font already installed on Windows. Skipping download/install."
+    exit 0
+  fi
+
+  download_archive
+  extract_archive
+  ensure_fonts_found
+
   install_windows_fonts
   echo "Nerd Font installation complete on Windows. Restart Windows Terminal to refresh font list."
 else
+  if unix_font_available; then
+    echo "Nerd Font already installed. Skipping download/install."
+    exit 0
+  fi
+
+  download_archive
+  extract_archive
+  ensure_fonts_found
+
   install_unix_fonts
   echo "Nerd Font installation complete. Restart your terminal to refresh font list."
 fi
