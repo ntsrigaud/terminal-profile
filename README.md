@@ -6,7 +6,7 @@ This repository supports Windows 11 (Git Bash), Ubuntu Linux, and macOS.
 
 It installs:
 
-- Roboto Mono Powerline font for the current Windows user
+- RobotoMono Nerd Font Mono directly from Nerd Fonts GitHub releases
 - zsh + Oh My Zsh
 - zsh plugins: syntax highlighting and autosuggestions
 - custom Pixegami agnoster theme
@@ -78,10 +78,12 @@ If this is your first time configuring zsh, restart your terminal application af
 
 - Installs `powerline-status` with `pip3` when available
 - Copies [configs/.vimrc](configs/.vimrc)
-- Installs fonts to OS-specific user font directories:
+- Downloads `RobotoMono.zip` directly from Nerd Fonts releases and installs it to OS-specific user font directories:
 	- Windows: `%LOCALAPPDATA%/Microsoft/Windows/Fonts`
 	- Ubuntu/Linux: `~/.local/share/fonts`
 	- macOS: `~/Library/Fonts`
+
+You do not need to manually install fonts or change font names in terminal settings.
 
 ### 2) zsh and Oh My Zsh
 
@@ -130,6 +132,6 @@ AUTO_CHSH=1 ./install.sh
 ## Sources
 
 - [Oh My Zsh](https://github.com/ohmyzsh/ohmyzsh)
-- [Powerline Fonts](https://github.com/powerline/fonts)
+- [Nerd Fonts](https://github.com/ryanoasis/nerd-fonts)
 - [Agnoster Theme](https://gist.github.com/3712874)
 

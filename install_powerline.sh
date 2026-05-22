@@ -45,7 +45,7 @@ case "$os_name" in
 		echo "Detected Windows (Git Bash/MSYS). Installing Powerline user dependencies."
 		install_powerline_python
 		install_vim_profile
-		bash "$REPO_ROOT/fonts/install.sh" "Roboto Mono"
+		bash "$REPO_ROOT/fonts/install.sh"
 		echo "Powerline/font setup complete for Windows."
 		;;
 	ubuntu)
@@ -53,7 +53,7 @@ case "$os_name" in
 		install_ubuntu_deps
 		install_powerline_python
 		install_vim_profile
-		bash "$REPO_ROOT/fonts/install.sh" "Roboto Mono"
+		bash "$REPO_ROOT/fonts/install.sh"
 		echo "Powerline/font setup complete for Ubuntu."
 		;;
 	macos)
@@ -61,14 +61,14 @@ case "$os_name" in
 		install_macos_deps
 		install_powerline_python
 		install_vim_profile
-		bash "$REPO_ROOT/fonts/install.sh" "Roboto Mono"
+		bash "$REPO_ROOT/fonts/install.sh"
 		echo "Powerline/font setup complete for macOS."
 		;;
 	linux)
 		echo "Detected non-Ubuntu Linux. Installing what is available without distro-specific package manager assumptions."
 		install_powerline_python
 		install_vim_profile
-		bash "$REPO_ROOT/fonts/install.sh" "Roboto Mono"
+		bash "$REPO_ROOT/fonts/install.sh"
 		echo "Powerline/font setup complete for Linux."
 		;;
 esac

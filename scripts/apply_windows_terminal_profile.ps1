@@ -1,6 +1,6 @@
 param(
   [string]$SchemeName = 'Pixegami',
-  [string]$FontFace = 'Roboto Mono for Powerline',
+  [string]$FontFace = 'RobotoMono Nerd Font Mono',
   [int]$FontSize = 14
 )
 

@@ -14,7 +14,7 @@ cat > "$PROFILE_FILE" <<'JSON'
       "Guid": "F3D54120-1DA8-4A2A-A7E9-71872A5796C1",
       "Name": "Pixegami",
       "Dynamic Profile Parent Name": "Default",
-      "Normal Font": "RobotoMonoForPowerline 14",
+      "Normal Font": "RobotoMono Nerd Font Mono 14",
       "Use Bright Bold": true,
       "Foreground Color": {
         "Red Component": 0.525,
