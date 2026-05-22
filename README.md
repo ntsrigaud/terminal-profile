@@ -114,7 +114,7 @@ You do not need to manually install fonts or change font names in terminal setti
 	- iTerm2 dynamic profile using [scripts/apply_iterm2_profile.sh](scripts/apply_iterm2_profile.sh)
 - On Windows, configures interactive Git Bash sessions to auto-start zsh so the zsh theme/plugins are active by default
 - On Windows, creates a `~/bin/zsh` shim and updates `~/.bashrc` to prepend the detected zsh binary directory, ensuring `zsh` is available in normal Git Bash sessions
-- On Windows, writes zsh config/theme/plugins into the detected MSYS2 zsh home (for example `/c/msys64/home/<user>`) so zsh can load the same profile correctly
+- On Windows, writes zsh config/theme/plugins into the detected MSYS2 zsh home (for example `/c/msys64/home/<user>`) and normalizes `HOME` inside zsh to your Windows profile path (`/c/Users/<user>`) so `cd` and `~` stay Windows-native
 
 To temporarily stay in Bash on Windows, launch with:
 

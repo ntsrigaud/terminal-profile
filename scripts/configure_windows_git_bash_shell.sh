@@ -117,6 +117,16 @@ cat >> "$bashrc_path" <<EOF
 $BEGIN_MARKER
 # Make zsh the interactive shell when launching Git Bash on Windows.
 PIXEGAMI_ZSH_BIN_DIR="$zsh_dir"
+PIXEGAMI_WINDOWS_HOME="${HOME}"
+if [ -n "\${USERPROFILE:-}" ] && command -v cygpath >/dev/null 2>&1; then
+  PIXEGAMI_WINDOWS_HOME="\$(cygpath -u "\$USERPROFILE")"
+fi
+
+if [ -d "\$PIXEGAMI_WINDOWS_HOME" ]; then
+  export HOME="\$PIXEGAMI_WINDOWS_HOME"
+  export ZDOTDIR="\$PIXEGAMI_WINDOWS_HOME"
+fi
+
 if [ -d "\$PIXEGAMI_ZSH_BIN_DIR" ]; then
   case ":\$PATH:" in
     *":\$PIXEGAMI_ZSH_BIN_DIR:"*) ;;
