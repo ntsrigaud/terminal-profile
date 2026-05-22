@@ -3,20 +3,24 @@
 set -euo pipefail
 
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+source "$REPO_ROOT/scripts/os_helpers.sh"
 
-is_windows() {
-	case "$(uname -s)" in
-		MINGW*|MSYS*|CYGWIN*)
-			return 0
-			;;
-		*)
-			return 1
-			;;
-	esac
-}
-
-command_exists() {
-	command -v "$1" >/dev/null 2>&1
+ensure_zsh_in_path() {
+	local candidate
+	for candidate in \
+		/usr/bin \
+		/c/Program\ Files/Git/usr/bin \
+		/c/tools/msys64/usr/bin \
+		/c/msys64/usr/bin
+	do
+		if [ -x "$candidate/zsh.exe" ] || [ -x "$candidate/zsh" ]; then
+			case ":$PATH:" in
+				*":$candidate:"*) ;;
+				*) PATH="$candidate:$PATH" ;;
+			esac
+		fi
+	done
+	export PATH
 }
 
 clone_or_update_plugin() {
@@ -47,19 +51,12 @@ cp "$REPO_ROOT/configs/.zshrc" "$HOME/.zshrc"
 # Copy the modified Agnoster Theme.
 cp "$REPO_ROOT/configs/pixegami-agnoster.zsh-theme" "$HOME/.oh-my-zsh/themes/pixegami-agnoster.zsh-theme"
 
-if is_windows; then
-	echo "Applying Windows Terminal profile and color scheme."
-	powershell.exe -NoProfile -ExecutionPolicy Bypass -File "$REPO_ROOT/scripts/apply_windows_terminal_profile.ps1"
-
-	if command_exists zsh; then
-		echo "Profile setup complete. Start zsh with: zsh"
-	else
-		echo "Profile copied, but zsh was not found in PATH."
+apply_ubuntu_terminal_profile() {
+	if ! command_exists dconf; then
+		echo "dconf not found; skipping GNOME Terminal profile import."
+		return
 	fi
-	exit 0
-fi
 
-if command_exists dconf; then
 	# Color Theme
 	dconf load /org/gnome/terminal/legacy/profiles:/:fb358fc9-49ea-4252-ad34-1d25c649e633/ < "$REPO_ROOT/configs/terminal_profile.dconf"
 
@@ -76,11 +73,50 @@ if command_exists dconf; then
 	new_list="$front_list'$add_list_id']"
 	dconf write /org/gnome/terminal/legacy/profiles:/list "$new_list"
 	dconf write /org/gnome/terminal/legacy/profiles:/default "'$add_list_id'"
-fi
+}
 
-# Switch the shell on Linux only.
-if command_exists chsh && command_exists zsh; then
-	chsh -s "$(command -v zsh)"
-fi
+apply_macos_terminal_profile() {
+	bash "$REPO_ROOT/scripts/apply_iterm2_profile.sh"
+}
 
-echo "Profile setup complete."
+maybe_switch_default_shell() {
+	if [ "${AUTO_CHSH:-0}" != "1" ]; then
+		echo "Skipping default shell switch. Set AUTO_CHSH=1 to enable automatic chsh."
+		return
+	fi
+
+	if command_exists chsh && command_exists zsh; then
+		chsh -s "$(command -v zsh)"
+	fi
+}
+
+os_name="$(detect_os)"
+
+case "$os_name" in
+	windows)
+		echo "Applying Windows Terminal profile and color scheme."
+		powershell.exe -NoProfile -ExecutionPolicy Bypass -File "$REPO_ROOT/scripts/apply_windows_terminal_profile.ps1"
+		;;
+	ubuntu)
+		echo "Applying Ubuntu terminal profile and shell configuration."
+		apply_ubuntu_terminal_profile
+		maybe_switch_default_shell
+		;;
+	macos)
+		echo "Applying macOS iTerm2 profile and shell configuration."
+		apply_macos_terminal_profile
+		maybe_switch_default_shell
+		;;
+	linux)
+		echo "Applying Linux shell configuration."
+		maybe_switch_default_shell
+		;;
+esac
+
+ensure_zsh_in_path
+
+if command_exists zsh || command_exists zsh.exe; then
+	echo "Profile setup complete. Start zsh with: zsh"
+else
+	echo "Profile copied, but zsh was not found in PATH."
+fi

@@ -35,7 +35,7 @@ function Convert-JsoncToJson {
 
 $settingsPath = Resolve-WindowsTerminalSettingsPath
 $rawSettings = Get-Content -LiteralPath $settingsPath -Raw
-$settings = (Convert-JsoncToJson -Text $rawSettings) | ConvertFrom-Json -Depth 100
+$settings = (Convert-JsoncToJson -Text $rawSettings) | ConvertFrom-Json
 
 if ($null -eq $settings.profiles) {
   $settings | Add-Member -MemberType NoteProperty -Name profiles -Value ([PSCustomObject]@{})
@@ -61,12 +61,30 @@ if ($null -eq $gitBashProfile) {
   throw 'No Git Bash profile found in Windows Terminal settings. Create a Git Bash profile first, then rerun install_profile.sh.'
 }
 
-if ($null -eq $gitBashProfile.font) {
-  $gitBashProfile | Add-Member -MemberType NoteProperty -Name font -Value ([PSCustomObject]@{})
+if ($null -eq $gitBashProfile.font -or $gitBashProfile.font -is [string]) {
+  $gitBashProfile.font = [PSCustomObject]@{}
+}
+
+$fontProps = $gitBashProfile.font.PSObject.Properties.Name
+if ($fontProps -notcontains 'face') {
+  $gitBashProfile.font | Add-Member -MemberType NoteProperty -Name face -Value $FontFace
+}
+if ($fontProps -notcontains 'size') {
+  $gitBashProfile.font | Add-Member -MemberType NoteProperty -Name size -Value $FontSize
 }
 
 $gitBashProfile.font.face = $FontFace
 $gitBashProfile.font.size = $FontSize
+
+if ($gitBashProfile.PSObject.Properties.Name -notcontains 'fontFace') {
+  $gitBashProfile | Add-Member -MemberType NoteProperty -Name fontFace -Value $FontFace
+}
+if ($gitBashProfile.PSObject.Properties.Name -notcontains 'fontSize') {
+  $gitBashProfile | Add-Member -MemberType NoteProperty -Name fontSize -Value $FontSize
+}
+
+$gitBashProfile.fontFace = $FontFace
+$gitBashProfile.fontSize = $FontSize
 $gitBashProfile.colorScheme = $SchemeName
 
 $pixegamiScheme = [PSCustomObject]@{

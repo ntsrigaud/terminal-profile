@@ -3,29 +3,7 @@
 set -euo pipefail
 
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-
-is_windows() {
-	case "$(uname -s)" in
-		MINGW*|MSYS*|CYGWIN*)
-			return 0
-			;;
-		*)
-			return 1
-			;;
-	esac
-}
-
-command_exists() {
-	command -v "$1" >/dev/null 2>&1
-}
-
-run_privileged() {
-	if command_exists sudo; then
-		sudo "$@"
-	else
-		"$@"
-	fi
-}
+source "$REPO_ROOT/scripts/os_helpers.sh"
 
 install_powerline_python() {
 	if command_exists pip3; then
@@ -47,19 +25,50 @@ install_vim_profile() {
 	fi
 }
 
-if is_windows; then
-	echo "Detected Windows (Git Bash/MSYS). Installing Powerline user dependencies."
-	install_powerline_python
-	install_vim_profile
-	bash "$REPO_ROOT/fonts/install.sh" "Roboto Mono"
-	echo "Powerline/font setup complete for Windows."
-	exit 0
-fi
+install_ubuntu_deps() {
+	run_privileged apt-get update
+	run_privileged apt-get install -y python3-pip fonts-powerline
+}
 
-echo "Detected Unix-like OS. Installing Linux dependencies."
-run_privileged apt-get update
-run_privileged apt-get install -y python3-pip fonts-powerline
-install_powerline_python
-install_vim_profile
-bash "$REPO_ROOT/fonts/install.sh" "Roboto Mono"
-echo "Powerline/font setup complete for Linux."
+install_macos_deps() {
+	if command_exists brew; then
+		brew install python
+	else
+		echo "Homebrew not found. Skipping package bootstrap for macOS."
+	fi
+}
+
+os_name="$(detect_os)"
+
+case "$os_name" in
+	windows)
+		echo "Detected Windows (Git Bash/MSYS). Installing Powerline user dependencies."
+		install_powerline_python
+		install_vim_profile
+		bash "$REPO_ROOT/fonts/install.sh" "Roboto Mono"
+		echo "Powerline/font setup complete for Windows."
+		;;
+	ubuntu)
+		echo "Detected Ubuntu. Installing dependencies with apt-get."
+		install_ubuntu_deps
+		install_powerline_python
+		install_vim_profile
+		bash "$REPO_ROOT/fonts/install.sh" "Roboto Mono"
+		echo "Powerline/font setup complete for Ubuntu."
+		;;
+	macos)
+		echo "Detected macOS. Installing dependencies with Homebrew where available."
+		install_macos_deps
+		install_powerline_python
+		install_vim_profile
+		bash "$REPO_ROOT/fonts/install.sh" "Roboto Mono"
+		echo "Powerline/font setup complete for macOS."
+		;;
+	linux)
+		echo "Detected non-Ubuntu Linux. Installing what is available without distro-specific package manager assumptions."
+		install_powerline_python
+		install_vim_profile
+		bash "$REPO_ROOT/fonts/install.sh" "Roboto Mono"
+		echo "Powerline/font setup complete for Linux."
+		;;
+esac

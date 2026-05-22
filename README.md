@@ -2,7 +2,7 @@
 
 ![terminal](./terminal_screenshot.png)
 
-This repository now supports Windows 11 with Git Bash as the main target.
+This repository supports Windows 11 (Git Bash), Ubuntu Linux, and macOS.
 
 It installs:
 
@@ -12,40 +12,61 @@ It installs:
 - custom Pixegami agnoster theme
 - Windows Terminal color scheme + Git Bash profile font settings
 
-## Target Environment
+## Supported Environments
 
-- OS: Windows 11
-- Shell host: Git Bash (MINGW64/MSYS)
-- Terminal: Windows Terminal
+- Windows 11: Git Bash + Windows Terminal
+- Ubuntu Linux: GNOME Terminal
+- macOS: iTerm2
 
 ## Prerequisites
 
 Install these first:
 
-- Git for Windows (includes Git Bash)
-- Windows Terminal
-- One package manager for zsh bootstrap: `choco`, `winget`, or `pacman`
-- Optional for Vim Powerline integration: `python3` + `pip3` + `vim`
+- Windows:
+	- Git for Windows (includes Git Bash)
+	- Windows Terminal
+	- One package manager for zsh bootstrap: `choco`, `winget`, or `pacman`
+- Ubuntu:
+	- `sudo` access for `apt-get`
+- macOS:
+	- Homebrew
+	- iTerm2
+
+Optional for Vim Powerline integration on all OSes: `python3` + `pip3` + `vim`
 
 The scripts are idempotent, so it is safe to re-run them.
 
-## Installation (Windows 11 + Git Bash)
+## Installation
+
+### Auto-detect OS (recommended)
 
 From repository root:
 
 ```bash
-./install_powerline.sh
-./install_terminal.sh
-./install_profile.sh
+./install.sh
 ```
 
-Then start zsh:
+### Explicit OS entry scripts
+
+If you want to force a specific OS flow:
+
+```bash
+./install_windows.sh
+./install_ubuntu.sh
+./install_macos.sh
+```
+
+The scripts are idempotent, so re-running is safe.
+
+### Start zsh
+
+From repository root:
 
 ```bash
 zsh
 ```
 
-If this is your first time configuring zsh on Windows, restart Windows Terminal after installation.
+If this is your first time configuring zsh, restart your terminal application after installation.
 
 ## What Each Script Does
 
@@ -57,7 +78,10 @@ If this is your first time configuring zsh on Windows, restart Windows Terminal 
 
 - Installs `powerline-status` with `pip3` when available
 - Copies [configs/.vimrc](configs/.vimrc)
-- Installs Powerline fonts into `%LOCALAPPDATA%/Microsoft/Windows/Fonts`
+- Installs fonts to OS-specific user font directories:
+	- Windows: `%LOCALAPPDATA%/Microsoft/Windows/Fonts`
+	- Ubuntu/Linux: `~/.local/share/fonts`
+	- macOS: `~/Library/Fonts`
 
 ### 2) zsh and Oh My Zsh
 
@@ -66,7 +90,10 @@ If this is your first time configuring zsh on Windows, restart Windows Terminal 
 ```
 
 - Ensures `zsh` exists
-- Tries installers in this order: `pacman`, `choco`, `winget`
+- Uses OS package manager:
+	- Windows: `pacman`, `choco`, `winget`
+	- Ubuntu: `apt-get`
+	- macOS: `brew`
 - Installs Oh My Zsh unattended
 
 ### 3) profile, plugins, and terminal colors
@@ -78,19 +105,27 @@ If this is your first time configuring zsh on Windows, restart Windows Terminal 
 - Installs or updates zsh plugins
 - Copies [configs/.zshrc](configs/.zshrc)
 - Copies [configs/pixegami-agnoster.zsh-theme](configs/pixegami-agnoster.zsh-theme)
-- Applies Windows Terminal settings using [scripts/apply_windows_terminal_profile.ps1](scripts/apply_windows_terminal_profile.ps1)
+- Applies terminal configuration by OS:
+	- Windows Terminal settings using [scripts/apply_windows_terminal_profile.ps1](scripts/apply_windows_terminal_profile.ps1)
+	- Ubuntu GNOME Terminal settings via [configs/terminal_profile.dconf](configs/terminal_profile.dconf)
+	- iTerm2 dynamic profile using [scripts/apply_iterm2_profile.sh](scripts/apply_iterm2_profile.sh)
 
-## Reset / Rollback (Windows)
+To automatically switch your default shell to zsh on Unix systems, run with:
 
-- Windows Terminal settings are backed up automatically to `settings.json.bak` before modifications
-- To rollback terminal styling, restore the backup file in your Windows Terminal LocalState folder
-- To disable this profile quickly, change the Windows Terminal profile color scheme and font in Settings UI
-- To stop using zsh in a session, run `bash`
+```bash
+AUTO_CHSH=1 ./install.sh
+```
 
-## Linux Notes (Legacy)
+## Reset / Rollback
 
-Linux support is still present, including `apt-get` and `dconf` profile import behavior.
-Windows is now the primary tested path.
+- Windows:
+	- Windows Terminal settings are backed up to `settings.json.bak`
+	- Restore backup to rollback theme/profile changes
+- Ubuntu:
+	- Remove the imported GNOME Terminal profile or reset dconf keys
+- macOS:
+	- Remove `~/Library/Application Support/iTerm2/DynamicProfiles/pixegami-terminal-profile.json`
+- To stop using zsh in any session, run `bash`.
 
 ## Sources
 

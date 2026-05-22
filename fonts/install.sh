@@ -20,21 +20,31 @@ is_windows() {
 
 if is_windows; then
   echo "Installing fonts for Windows user profile..."
-  powershell.exe -NoProfile -ExecutionPolicy Bypass -Command "
-    \
-    $ErrorActionPreference = 'Stop';\
-    $source = Resolve-Path '$powerline_fonts_dir';\
-    $target = Join-Path $env:LOCALAPPDATA 'Microsoft/Windows/Fonts';\
-    if (!(Test-Path -LiteralPath $target)) { New-Item -ItemType Directory -Path $target | Out-Null };\
-    Get-ChildItem -Path $source -Recurse -File | Where-Object { $_.Extension -in '.ttf','.otf' -and $_.Name -like '$prefix*' } | ForEach-Object {\
-      $dest = Join-Path $target $_.Name;\
-      Copy-Item -LiteralPath $_.FullName -Destination $dest -Force;\
-      $regPath = 'HKCU:\\Software\\Microsoft\\Windows NT\\CurrentVersion\\Fonts';\
-      $fontName = [System.IO.Path]::GetFileNameWithoutExtension($_.Name) + ' (TrueType)';\
-      Set-ItemProperty -Path $regPath -Name $fontName -Value $_.Name -Force;\
-    };\
-    Write-Host 'Fonts copied to' $target;\
-  "
+  powershell.exe -NoProfile -ExecutionPolicy Bypass -Command '& {
+    param([string]$SourceDir, [string]$Prefix)
+    $ErrorActionPreference = "Stop"
+    $source = Resolve-Path -LiteralPath $SourceDir
+    $target = Join-Path $env:LOCALAPPDATA "Microsoft/Windows/Fonts"
+
+    if (!(Test-Path -LiteralPath $target)) {
+      New-Item -ItemType Directory -Path $target | Out-Null
+    }
+
+    $nameFilter = if ([string]::IsNullOrWhiteSpace($Prefix)) { "*" } else { "$Prefix*" }
+
+    Get-ChildItem -Path $source -Recurse -File |
+      Where-Object { $_.Extension -in ".ttf", ".otf" -and $_.Name -like $nameFilter } |
+      ForEach-Object {
+        $dest = Join-Path $target $_.Name
+        Copy-Item -LiteralPath $_.FullName -Destination $dest -Force
+
+        $regPath = "HKCU:\Software\Microsoft\Windows NT\CurrentVersion\Fonts"
+        $fontName = [System.IO.Path]::GetFileNameWithoutExtension($_.Name) + " (TrueType)"
+        Set-ItemProperty -Path $regPath -Name $fontName -Value $_.Name -Force
+      }
+
+    Write-Host "Fonts copied to" $target
+  }' "$powerline_fonts_dir" "$prefix"
   echo "Powerline fonts installed for Windows. Restart Windows Terminal to apply changes."
   exit 0
 fi
