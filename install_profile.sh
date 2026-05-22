@@ -23,6 +23,37 @@ ensure_zsh_in_path() {
 	export PATH
 }
 
+resolve_windows_zsh_home() {
+	local zsh_bin=""
+	local candidate
+
+	for candidate in \
+		/c/msys64/usr/bin/zsh \
+		/c/msys64/usr/bin/zsh.exe \
+		/c/tools/msys64/usr/bin/zsh \
+		/c/tools/msys64/usr/bin/zsh.exe
+	do
+		if [ -x "$candidate" ]; then
+			zsh_bin="$candidate"
+			break
+		fi
+	done
+
+	if [ -z "$zsh_bin" ]; then
+		zsh_bin="$(command -v zsh || command -v zsh.exe || true)"
+	fi
+
+	if [ -n "$zsh_bin" ]; then
+		local zsh_dir msys_root
+		zsh_dir="$(dirname "$zsh_bin")"
+		msys_root="$(cd "$zsh_dir/../.." && pwd)"
+		echo "$msys_root/home/$(id -un)"
+		return
+	fi
+
+	echo "/c/msys64/home/$(id -un)"
+}
+
 clone_or_update_plugin() {
 	local repo_url="$1"
 	local target_dir="$2"
@@ -34,22 +65,27 @@ clone_or_update_plugin() {
 	fi
 }
 
-if [ ! -d "$HOME/.oh-my-zsh" ]; then
+target_home="$HOME"
+if [ "$(detect_os)" = "windows" ]; then
+	target_home="$(resolve_windows_zsh_home)"
+fi
+
+if [ ! -d "$target_home/.oh-my-zsh" ]; then
 	echo "Oh My Zsh is not installed yet. Run ./install_terminal.sh first."
 	exit 1
 fi
 
-mkdir -p "$HOME/.oh-my-zsh/custom/plugins"
+mkdir -p "$target_home/.oh-my-zsh/custom/plugins"
 
 # Install or update plug-ins.
-clone_or_update_plugin "https://github.com/zsh-users/zsh-syntax-highlighting" "$HOME/.oh-my-zsh/custom/plugins/zsh-syntax-highlighting"
-clone_or_update_plugin "https://github.com/zsh-users/zsh-autosuggestions" "$HOME/.oh-my-zsh/custom/plugins/zsh-autosuggestions"
+clone_or_update_plugin "https://github.com/zsh-users/zsh-syntax-highlighting" "$target_home/.oh-my-zsh/custom/plugins/zsh-syntax-highlighting"
+clone_or_update_plugin "https://github.com/zsh-users/zsh-autosuggestions" "$target_home/.oh-my-zsh/custom/plugins/zsh-autosuggestions"
 
 # Replace the configs with the saved one.
-cp "$REPO_ROOT/configs/.zshrc" "$HOME/.zshrc"
+cp "$REPO_ROOT/configs/.zshrc" "$target_home/.zshrc"
 
 # Copy the modified Agnoster Theme.
-cp "$REPO_ROOT/configs/pixegami-agnoster.zsh-theme" "$HOME/.oh-my-zsh/themes/pixegami-agnoster.zsh-theme"
+cp "$REPO_ROOT/configs/pixegami-agnoster.zsh-theme" "$target_home/.oh-my-zsh/themes/pixegami-agnoster.zsh-theme"
 
 apply_ubuntu_terminal_profile() {
 	if ! command_exists dconf; then
@@ -96,6 +132,7 @@ case "$os_name" in
 	windows)
 		echo "Applying Windows Terminal profile and color scheme."
 		powershell.exe -NoProfile -ExecutionPolicy Bypass -File "$REPO_ROOT/scripts/apply_windows_terminal_profile.ps1"
+		bash "$REPO_ROOT/scripts/configure_windows_git_bash_shell.sh"
 		;;
 	ubuntu)
 		echo "Applying Ubuntu terminal profile and shell configuration."

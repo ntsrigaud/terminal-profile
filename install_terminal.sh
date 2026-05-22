@@ -60,7 +60,7 @@ install_msys2_windows() {
 
 install_zsh_windows() {
 	ensure_zsh_in_path
-	if command_exists zsh; then
+	if command_exists zsh || command_exists zsh.exe; then
 		echo "zsh already available."
 		return
 	fi
@@ -75,14 +75,49 @@ install_zsh_windows() {
 		return
 	fi
 
-	if ! command_exists zsh; then
+	if ! command_exists zsh && ! command_exists zsh.exe; then
 		echo "Unable to auto-install zsh. Install MSYS2 and run: pacman -Sy --noconfirm zsh"
 		exit 1
 	fi
 }
 
+resolve_windows_zsh_home() {
+	local zsh_bin=""
+	local candidate
+
+	for candidate in \
+		/c/msys64/usr/bin/zsh \
+		/c/msys64/usr/bin/zsh.exe \
+		/c/tools/msys64/usr/bin/zsh \
+		/c/tools/msys64/usr/bin/zsh.exe
+	do
+		if [ -x "$candidate" ]; then
+			zsh_bin="$candidate"
+			break
+		fi
+	done
+
+	if [ -z "$zsh_bin" ]; then
+		zsh_bin="$(command -v zsh || command -v zsh.exe || true)"
+	fi
+
+	if [ -n "$zsh_bin" ]; then
+		local zsh_dir msys_root
+		zsh_dir="$(dirname "$zsh_bin")"
+		msys_root="$(cd "$zsh_dir/../.." && pwd)"
+		echo "$msys_root/home/$(id -un)"
+		return
+	fi
+
+	echo "/c/msys64/home/$(id -un)"
+}
+
 install_oh_my_zsh() {
-	if [ -d "$HOME/.oh-my-zsh" ]; then
+	local target_home="${1:-$HOME}"
+	local target_omz="$target_home/.oh-my-zsh"
+	local target_zshrc="$target_home/.zshrc"
+
+	if [ -d "$target_omz" ]; then
 		echo "Oh My Zsh already installed."
 		return
 	fi
@@ -92,10 +127,11 @@ install_oh_my_zsh() {
 		exit 1
 	fi
 
-	git clone --depth 1 https://github.com/ohmyzsh/ohmyzsh.git "$HOME/.oh-my-zsh"
+	mkdir -p "$target_home"
+	git clone --depth 1 https://github.com/ohmyzsh/ohmyzsh.git "$target_omz"
 
-	if [ ! -f "$HOME/.zshrc" ] && [ -f "$HOME/.oh-my-zsh/templates/zshrc.zsh-template" ]; then
-		cp "$HOME/.oh-my-zsh/templates/zshrc.zsh-template" "$HOME/.zshrc"
+	if [ ! -f "$target_zshrc" ] && [ -f "$target_omz/templates/zshrc.zsh-template" ]; then
+		cp "$target_omz/templates/zshrc.zsh-template" "$target_zshrc"
 	fi
 }
 
@@ -139,7 +175,8 @@ case "$os_name" in
 	windows)
 		echo "Detected Windows (Git Bash/MSYS)."
 		install_zsh_windows
-		install_oh_my_zsh
+		windows_zsh_home="$(resolve_windows_zsh_home)"
+		install_oh_my_zsh "$windows_zsh_home"
 		echo "Terminal dependencies installed for Windows."
 		;;
 	ubuntu)
