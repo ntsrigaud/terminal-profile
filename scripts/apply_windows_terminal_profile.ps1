@@ -1,0 +1,185 @@
+param(
+  [string]$SchemeName = 'Pixegami',
+  [string]$FontFace = 'RobotoMono Nerd Font Mono',
+  [int]$FontSize = 14
+)
+
+$ErrorActionPreference = 'Stop'
+
+function Resolve-WindowsTerminalSettingsPath {
+  $candidates = @(
+    "$env:LOCALAPPDATA\Packages\Microsoft.WindowsTerminal_8wekyb3d8bbwe\LocalState\settings.json",
+    "$env:LOCALAPPDATA\Packages\Microsoft.WindowsTerminalPreview_8wekyb3d8bbwe\LocalState\settings.json"
+  )
+
+  foreach ($candidate in $candidates) {
+    if (Test-Path -LiteralPath $candidate) {
+      return $candidate
+    }
+  }
+
+  throw 'Windows Terminal settings.json was not found in expected package locations.'
+}
+
+function Convert-JsoncToJson {
+  param(
+    [Parameter(Mandatory = $true)]
+    [string]$Text
+  )
+
+  $withoutBlockComments = [Regex]::Replace($Text, '/\*.*?\*/', '', [System.Text.RegularExpressions.RegexOptions]::Singleline)
+  $withoutLineComments = [Regex]::Replace($withoutBlockComments, '(?m)^\s*//.*$', '')
+  $withoutTrailingCommas = [Regex]::Replace($withoutLineComments, ',\s*([}\]])', '$1')
+  return $withoutTrailingCommas
+}
+
+function Resolve-InstalledFontFace {
+  param(
+    [Parameter(Mandatory = $true)]
+    [string]$PreferredFace
+  )
+
+  Add-Type -AssemblyName System.Drawing
+  $fontCollection = New-Object System.Drawing.Text.InstalledFontCollection
+  $installedNames = @($fontCollection.Families | ForEach-Object { $_.Name })
+  $registryNames = @()
+
+  $regPath = 'HKCU:\Software\Microsoft\Windows NT\CurrentVersion\Fonts'
+  if (Test-Path -LiteralPath $regPath) {
+    $registryNames = (Get-ItemProperty -Path $regPath).PSObject.Properties.Name |
+      Where-Object { $_ -notmatch '^PS' } |
+      ForEach-Object { $_ -replace ' \(TrueType\)$', '' }
+  }
+
+  $preferredCandidates = @(
+    $PreferredFace,
+    'RobotoMono Nerd Font Mono',
+    'RobotoMono Nerd Font',
+    'Roboto Mono Nerd Font Mono',
+    'Roboto Mono Nerd Font',
+    'RobotoMonoNerdFontMono',
+    'RobotoMonoNerdFont',
+    'RobotoMono NFM',
+    'RobotoMono NF'
+  )
+
+  foreach ($candidate in $preferredCandidates) {
+    if ($installedNames -contains $candidate -or $registryNames -contains $candidate) {
+      return $candidate
+    }
+  }
+
+  $patternMatch = @($installedNames | Select-Object -Unique) |
+    Where-Object { $_ -match 'Roboto.*(Nerd ?Font|NFM|NF)' } |
+    Select-Object -First 1
+
+  if ($null -ne $patternMatch) {
+    return $patternMatch
+  }
+
+  return $PreferredFace
+}
+
+$settingsPath = Resolve-WindowsTerminalSettingsPath
+$rawSettings = Get-Content -LiteralPath $settingsPath -Raw
+$settings = (Convert-JsoncToJson -Text $rawSettings) | ConvertFrom-Json
+$resolvedFontFace = Resolve-InstalledFontFace -PreferredFace $FontFace
+
+if ($null -eq $settings.profiles) {
+  $settings | Add-Member -MemberType NoteProperty -Name profiles -Value ([PSCustomObject]@{})
+}
+
+if ($null -eq $settings.profiles.list) {
+  $settings.profiles | Add-Member -MemberType NoteProperty -Name list -Value @()
+}
+
+$profiles = @($settings.profiles.list)
+if ($profiles.Count -eq 0) {
+  throw 'No terminal profiles found in settings.json.'
+}
+
+$gitBashProfile = $profiles |
+  Where-Object {
+    $_.name -match 'Git Bash' -or
+    ($_.commandline -is [string] -and $_.commandline -match 'git-bash\.exe|\\bash\.exe')
+  } |
+  Select-Object -First 1
+
+if ($null -eq $gitBashProfile) {
+  throw 'No Git Bash profile found in Windows Terminal settings. Create a Git Bash profile first, then rerun install_profile.sh.'
+}
+
+if ($null -eq $gitBashProfile.font -or $gitBashProfile.font -is [string]) {
+  $gitBashProfile.font = [PSCustomObject]@{}
+}
+
+$fontProps = $gitBashProfile.font.PSObject.Properties.Name
+if ($fontProps -notcontains 'face') {
+  $gitBashProfile.font | Add-Member -MemberType NoteProperty -Name face -Value $resolvedFontFace
+}
+if ($fontProps -notcontains 'size') {
+  $gitBashProfile.font | Add-Member -MemberType NoteProperty -Name size -Value $FontSize
+}
+
+$gitBashProfile.font.face = $resolvedFontFace
+$gitBashProfile.font.size = $FontSize
+
+if ($gitBashProfile.PSObject.Properties.Name -notcontains 'fontFace') {
+  $gitBashProfile | Add-Member -MemberType NoteProperty -Name fontFace -Value $resolvedFontFace
+}
+if ($gitBashProfile.PSObject.Properties.Name -notcontains 'fontSize') {
+  $gitBashProfile | Add-Member -MemberType NoteProperty -Name fontSize -Value $FontSize
+}
+
+$gitBashProfile.fontFace = $resolvedFontFace
+$gitBashProfile.fontSize = $FontSize
+$gitBashProfile.colorScheme = $SchemeName
+
+$pixegamiScheme = [PSCustomObject]@{
+  name          = $SchemeName
+  background    = '#0C1C25'
+  foreground    = '#86FFAF'
+  black         = '#152535'
+  red           = '#FF3C3C'
+  green         = '#49FF6D'
+  yellow        = '#FFBC51'
+  blue          = '#3DB6F9'
+  purple        = '#8E44AD'
+  cyan          = '#16A085'
+  white         = '#BDC3C7'
+  brightBlack   = '#26384B'
+  brightRed     = '#FF3C4C'
+  brightGreen   = '#93FF91'
+  brightYellow  = '#FFD057'
+  brightBlue    = '#5BD7FF'
+  brightPurple  = '#9B59B6'
+  brightCyan    = '#205C57'
+  brightWhite   = '#FFFFFF'
+}
+
+if ($null -eq $settings.schemes) {
+  $settings | Add-Member -MemberType NoteProperty -Name schemes -Value @()
+}
+
+$existingScheme = @($settings.schemes) | Where-Object { $_.name -eq $SchemeName } | Select-Object -First 1
+if ($null -eq $existingScheme) {
+  $settings.schemes += $pixegamiScheme
+} else {
+  foreach ($prop in $pixegamiScheme.PSObject.Properties.Name) {
+    $existingScheme.$prop = $pixegamiScheme.$prop
+  }
+}
+
+if ($null -ne $gitBashProfile.guid) {
+  $settings.defaultProfile = $gitBashProfile.guid
+}
+
+$backupPath = "$settingsPath.bak"
+Copy-Item -LiteralPath $settingsPath -Destination $backupPath -Force
+
+$updatedJson = $settings | ConvertTo-Json -Depth 100
+Set-Content -LiteralPath $settingsPath -Value $updatedJson -Encoding UTF8
+
+Write-Host "Updated Windows Terminal settings at: $settingsPath"
+Write-Host "Backup created at: $backupPath"
+Write-Host "Applied scheme '$SchemeName' to profile '$($gitBashProfile.name)' with font '$resolvedFontFace'."
