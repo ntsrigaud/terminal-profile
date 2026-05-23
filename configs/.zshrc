@@ -89,6 +89,8 @@ plugins=(
 )
 
 source $ZSH/oh-my-zsh.sh
+PIXEGAMI_THEME_PROMPT="$PROMPT"
+PIXEGAMI_THEME_PS1="$PS1"
 
 for pixegami_conda_root in \
   /c/tools/miniconda3 \
@@ -101,6 +103,7 @@ do
   if [[ -x "$pixegami_conda_root/Scripts/conda.exe" ]]; then
     export CONDA_EXE="$pixegami_conda_root/Scripts/conda.exe"
     if [[ -f "$pixegami_conda_root/etc/profile.d/conda.sh" ]]; then
+      export CONDA_CHANGEPS1=false
       . "$pixegami_conda_root/etc/profile.d/conda.sh"
       if typeset -f __conda_exe >/dev/null 2>&1; then
         __pixegami_conda_eval() {
@@ -108,6 +111,8 @@ do
           ask_conda="$(__conda_exe shell.posix "$@")" || return
           ask_conda="${ask_conda//$'\r'/}"
           eval "$ask_conda"
+          PROMPT="$PIXEGAMI_THEME_PROMPT"
+          PS1="$PIXEGAMI_THEME_PS1"
           __conda_hashr
         }
 
