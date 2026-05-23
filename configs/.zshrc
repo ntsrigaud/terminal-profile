@@ -1,6 +1,30 @@
 # If you come from bash you might have to change your $PATH.
 # export PATH=$HOME/bin:/usr/local/bin:$PATH
 
+if [[ "$OSTYPE" == msys* || "$OSTYPE" == cygwin* ]]; then
+  if command -v cygpath >/dev/null 2>&1; then
+    if [[ -z "${USERPROFILE:-}" && -n "${HOME:-}" ]]; then
+      export USERPROFILE="$(cygpath -w "$HOME")"
+    fi
+
+    if [[ -z "${LOCALAPPDATA:-}" && -n "${USERPROFILE:-}" ]]; then
+      export LOCALAPPDATA="${USERPROFILE}\\AppData\\Local"
+    fi
+
+    if [[ -z "${TEMP:-}" && -n "${LOCALAPPDATA:-}" ]]; then
+      export TEMP="${LOCALAPPDATA}\\Temp"
+    fi
+
+    if [[ -z "${TMP:-}" && -n "${TEMP:-}" ]]; then
+      export TMP="$TEMP"
+    fi
+
+    if [[ -z "${TMPDIR:-}" && -n "${TEMP:-}" ]]; then
+      export TMPDIR="$(cygpath -u "$TEMP")"
+    fi
+  fi
+fi
+
 # Path to your oh-my-zsh installation.
   export ZSH="$HOME/.oh-my-zsh"
 
@@ -65,6 +89,24 @@ plugins=(
 )
 
 source $ZSH/oh-my-zsh.sh
+
+if ! command -v conda >/dev/null 2>&1; then
+  for pixegami_conda_exe in \
+    "${CONDA_EXE:-}" \
+    /c/tools/miniconda3/Scripts/conda.exe \
+    /c/tools/miniforge3/Scripts/conda.exe \
+    /c/tools/anaconda3/Scripts/conda.exe \
+    "$HOME/miniconda3/Scripts/conda.exe" \
+    "$HOME/miniforge3/Scripts/conda.exe" \
+    "$HOME/anaconda3/Scripts/conda.exe"
+  do
+    if [[ -n "$pixegami_conda_exe" && -x "$pixegami_conda_exe" ]]; then
+      eval "$("$pixegami_conda_exe" shell.zsh hook 2>/dev/null)"
+      break
+    fi
+  done
+  unset pixegami_conda_exe
+fi
 
 # User configuration
 
