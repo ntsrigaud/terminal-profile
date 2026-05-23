@@ -7,10 +7,10 @@ source "$REPO_ROOT/scripts/os_helpers.sh"
 ensure_zsh_in_path() {
 	local candidate
 	for candidate in \
-		/usr/bin \
-		/c/Program\ Files/Git/usr/bin \
 		/c/tools/msys64/usr/bin \
-		/c/msys64/usr/bin
+		/c/msys64/usr/bin \
+		/c/Program\ Files/Git/usr/bin \
+		/usr/bin
 	do
 		if [ -x "$candidate/zsh.exe" ] || [ -x "$candidate/zsh" ]; then
 			case ":$PATH:" in

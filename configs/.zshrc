@@ -90,23 +90,27 @@ plugins=(
 
 source $ZSH/oh-my-zsh.sh
 
-if ! command -v conda >/dev/null 2>&1; then
-  for pixegami_conda_exe in \
-    "${CONDA_EXE:-}" \
-    /c/tools/miniconda3/Scripts/conda.exe \
-    /c/tools/miniforge3/Scripts/conda.exe \
-    /c/tools/anaconda3/Scripts/conda.exe \
-    "$HOME/miniconda3/Scripts/conda.exe" \
-    "$HOME/miniforge3/Scripts/conda.exe" \
-    "$HOME/anaconda3/Scripts/conda.exe"
-  do
-    if [[ -n "$pixegami_conda_exe" && -x "$pixegami_conda_exe" ]]; then
-      eval "$("$pixegami_conda_exe" shell.zsh hook 2>/dev/null)"
-      break
+for pixegami_conda_root in \
+  /c/tools/miniconda3 \
+  /c/tools/miniforge3 \
+  /c/tools/anaconda3 \
+  "$HOME/miniconda3" \
+  "$HOME/miniforge3" \
+  "$HOME/anaconda3"
+do
+  if [[ -x "$pixegami_conda_root/Scripts/conda.exe" ]]; then
+    export CONDA_EXE="$pixegami_conda_root/Scripts/conda.exe"
+    if ! command -v conda >/dev/null 2>&1; then
+      if [[ -f "$pixegami_conda_root/etc/profile.d/conda.sh" ]]; then
+        . "$pixegami_conda_root/etc/profile.d/conda.sh"
+      else
+        export PATH="$pixegami_conda_root/Scripts:$pixegami_conda_root/condabin:$PATH"
+      fi
     fi
-  done
-  unset pixegami_conda_exe
-fi
+    break
+  fi
+done
+unset pixegami_conda_root
 
 # User configuration
 
@@ -136,3 +140,5 @@ fi
 # Example aliases
 # alias zshconfig="mate ~/.zshrc"
 # alias ohmyzsh="mate ~/.oh-my-zsh"
+alias nvim='/c/nvim-win64/bin/nvim.exe'
+export PATH=$PATH:/c/node
