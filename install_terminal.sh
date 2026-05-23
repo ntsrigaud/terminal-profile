@@ -7,10 +7,10 @@ source "$REPO_ROOT/scripts/os_helpers.sh"
 ensure_zsh_in_path() {
 	local candidate
 	for candidate in \
-		/usr/bin \
-		/c/Program\ Files/Git/usr/bin \
 		/c/tools/msys64/usr/bin \
-		/c/msys64/usr/bin
+		/c/msys64/usr/bin \
+		/c/Program\ Files/Git/usr/bin \
+		/usr/bin
 	do
 		if [ -x "$candidate/zsh.exe" ] || [ -x "$candidate/zsh" ]; then
 			case ":$PATH:" in
@@ -82,34 +82,31 @@ install_zsh_windows() {
 }
 
 resolve_windows_zsh_home() {
-	local zsh_bin=""
-	local candidate
-
-	for candidate in \
-		/c/msys64/usr/bin/zsh \
-		/c/msys64/usr/bin/zsh.exe \
-		/c/tools/msys64/usr/bin/zsh \
-		/c/tools/msys64/usr/bin/zsh.exe
-	do
-		if [ -x "$candidate" ]; then
-			zsh_bin="$candidate"
-			break
-		fi
-	done
-
-	if [ -z "$zsh_bin" ]; then
-		zsh_bin="$(command -v zsh || command -v zsh.exe || true)"
-	fi
-
-	if [ -n "$zsh_bin" ]; then
-		local zsh_dir msys_root
-		zsh_dir="$(dirname "$zsh_bin")"
-		msys_root="$(cd "$zsh_dir/../.." && pwd)"
-		echo "$msys_root/home/$(id -un)"
+	if [ -n "${USERPROFILE:-}" ] && command_exists cygpath; then
+		cygpath -u "$USERPROFILE"
 		return
 	fi
 
-	echo "/c/msys64/home/$(id -un)"
+	echo "$HOME"
+}
+
+# Make MSYS2 zsh use the Windows profile home (same as Git Bash) instead of
+# the cygwin-style /home/<user> path. This eliminates the split-home problem
+# where bash and zsh disagreed on the value of $HOME.
+configure_msys2_db_home() {
+	local nsswitch="/c/msys64/etc/nsswitch.conf"
+	if [ ! -f "$nsswitch" ]; then
+		return
+	fi
+	if grep -q "^db_home: windows" "$nsswitch"; then
+		return
+	fi
+	# Replace any existing db_home line with the windows variant.
+	local tmp_file
+	tmp_file="$(mktemp)"
+	sed 's/^db_home:.*$/db_home: windows/' "$nsswitch" > "$tmp_file"
+	mv "$tmp_file" "$nsswitch"
+	echo "Configured MSYS2 db_home to use Windows profile directory."
 }
 
 install_oh_my_zsh() {
@@ -175,6 +172,7 @@ case "$os_name" in
 	windows)
 		echo "Detected Windows (Git Bash/MSYS)."
 		install_zsh_windows
+		configure_msys2_db_home
 		windows_zsh_home="$(resolve_windows_zsh_home)"
 		install_oh_my_zsh "$windows_zsh_home"
 		echo "Terminal dependencies installed for Windows."

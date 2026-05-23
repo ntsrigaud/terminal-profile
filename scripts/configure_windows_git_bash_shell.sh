@@ -8,10 +8,10 @@ END_MARKER="# PIXEGAMI_GIT_BASH_TO_ZSH_END"
 ensure_zsh_in_path() {
   local candidate
   for candidate in \
-    /usr/bin \
-    /c/Program\ Files/Git/usr/bin \
     /c/tools/msys64/usr/bin \
-    /c/msys64/usr/bin
+    /c/msys64/usr/bin \
+    /c/Program\ Files/Git/usr/bin \
+    /usr/bin
   do
     if [ -x "$candidate/zsh.exe" ] || [ -x "$candidate/zsh" ]; then
       case ":$PATH:" in
@@ -26,14 +26,14 @@ ensure_zsh_in_path() {
 detect_zsh_binary() {
   local candidate
   for candidate in \
-    /usr/bin/zsh \
-    /usr/bin/zsh.exe \
-    /c/Program\ Files/Git/usr/bin/zsh \
-    /c/Program\ Files/Git/usr/bin/zsh.exe \
     /c/tools/msys64/usr/bin/zsh \
     /c/tools/msys64/usr/bin/zsh.exe \
     /c/msys64/usr/bin/zsh \
-    /c/msys64/usr/bin/zsh.exe
+    /c/msys64/usr/bin/zsh.exe \
+    /c/Program\ Files/Git/usr/bin/zsh \
+    /c/Program\ Files/Git/usr/bin/zsh.exe \
+    /usr/bin/zsh \
+    /usr/bin/zsh.exe
   do
     if [ -x "$candidate" ]; then
       echo "$candidate"
@@ -116,7 +116,18 @@ cat >> "$bashrc_path" <<EOF
 
 $BEGIN_MARKER
 # Make zsh the interactive shell when launching Git Bash on Windows.
+PIXEGAMI_ZSH_BINARY="$zsh_binary"
 PIXEGAMI_ZSH_BIN_DIR="$zsh_dir"
+PIXEGAMI_WINDOWS_HOME="${HOME}"
+if [ -n "\${USERPROFILE:-}" ] && command -v cygpath >/dev/null 2>&1; then
+  PIXEGAMI_WINDOWS_HOME="\$(cygpath -u "\$USERPROFILE")"
+fi
+
+if [ -d "\$PIXEGAMI_WINDOWS_HOME" ]; then
+  export HOME="\$PIXEGAMI_WINDOWS_HOME"
+  export ZDOTDIR="\$PIXEGAMI_WINDOWS_HOME"
+fi
+
 if [ -d "\$PIXEGAMI_ZSH_BIN_DIR" ]; then
   case ":\$PATH:" in
     *":\$PIXEGAMI_ZSH_BIN_DIR:"*) ;;
@@ -124,10 +135,18 @@ if [ -d "\$PIXEGAMI_ZSH_BIN_DIR" ]; then
   esac
 fi
 
-if [ -z "\${ZSH_VERSION:-}" ] && [ -z "\${PIXEGAMI_SKIP_AUTO_ZSH:-}" ]; then
+if [ -z "\${ZSH_VERSION:-}" ] \
+  && [ -z "\${PIXEGAMI_SKIP_AUTO_ZSH:-}" ] \
+  && [ -z "\${BASH_EXECUTION_STRING:-}" ] \
+  && [ -z "\${PIXEGAMI_AUTO_ZSH_ACTIVE:-}" ] \
+  && [ -t 0 ] && [ -t 1 ]; then
   case "\$-" in
     *i*)
-      if command -v zsh >/dev/null 2>&1; then
+      export PIXEGAMI_AUTO_ZSH_ACTIVE=1
+      if [ -x "\$PIXEGAMI_ZSH_BINARY" ]; then
+        export SHELL="\$PIXEGAMI_ZSH_BINARY"
+        exec "\$PIXEGAMI_ZSH_BINARY"
+      elif command -v zsh >/dev/null 2>&1; then
         export SHELL="\$(command -v zsh)"
         exec zsh
       elif command -v zsh.exe >/dev/null 2>&1; then
@@ -141,4 +160,4 @@ fi
 $END_MARKER
 EOF
 
-echo "Configured Git Bash to auto-start zsh for interactive sessions using $zsh_binary."
+echo "Configured Git Bash zsh bridge using $zsh_binary (auto-start enabled)."
