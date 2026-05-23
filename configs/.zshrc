@@ -100,12 +100,31 @@ for pixegami_conda_root in \
 do
   if [[ -x "$pixegami_conda_root/Scripts/conda.exe" ]]; then
     export CONDA_EXE="$pixegami_conda_root/Scripts/conda.exe"
-    if ! command -v conda >/dev/null 2>&1; then
-      if [[ -f "$pixegami_conda_root/etc/profile.d/conda.sh" ]]; then
-        . "$pixegami_conda_root/etc/profile.d/conda.sh"
-      else
-        export PATH="$pixegami_conda_root/Scripts:$pixegami_conda_root/condabin:$PATH"
+    if [[ -f "$pixegami_conda_root/etc/profile.d/conda.sh" ]]; then
+      . "$pixegami_conda_root/etc/profile.d/conda.sh"
+      if typeset -f __conda_exe >/dev/null 2>&1; then
+        __pixegami_conda_eval() {
+          local ask_conda
+          ask_conda="$(__conda_exe shell.posix "$@")" || return
+          ask_conda="${ask_conda//$'\r'/}"
+          eval "$ask_conda"
+          __conda_hashr
+        }
+
+        __conda_activate() {
+          if [ -n "${CONDA_PS1_BACKUP:+x}" ]; then
+            PS1="$CONDA_PS1_BACKUP"
+            unset CONDA_PS1_BACKUP
+          fi
+          __pixegami_conda_eval "$@"
+        }
+
+        __conda_reactivate() {
+          __pixegami_conda_eval reactivate
+        }
       fi
+    elif ! command -v conda >/dev/null 2>&1; then
+      export PATH="$pixegami_conda_root/Scripts:$pixegami_conda_root/condabin:$PATH"
     fi
     break
   fi
