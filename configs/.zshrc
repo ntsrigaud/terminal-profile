@@ -1,24 +1,6 @@
 # If you come from bash you might have to change your $PATH.
 # export PATH=$HOME/bin:/usr/local/bin:$PATH
 
-# Normalize Windows HOME so zsh does not fall back to /home/<user>.
-if [[ "$OSTYPE" == msys* || "$OSTYPE" == cygwin* ]]; then
-  windows_profile="${USERPROFILE:-}"
-
-  if [[ -z "$windows_profile" ]] && command -v cmd.exe >/dev/null 2>&1; then
-    windows_profile="$(cmd.exe /c "echo %USERPROFILE%" 2>/dev/null | tr -d '\r')"
-  fi
-
-  if [[ -z "$windows_profile" ]] && command -v powershell.exe >/dev/null 2>&1; then
-    windows_profile="$(powershell.exe -NoProfile -Command "[Environment]::GetFolderPath('UserProfile')" 2>/dev/null | tr -d '\r')"
-  fi
-
-  if command -v cygpath >/dev/null 2>&1 && [[ -n "$windows_profile" ]]; then
-    export HOME="$(cygpath -u "$windows_profile")"
-    export ZDOTDIR="$HOME"
-  fi
-fi
-
 # Path to your oh-my-zsh installation.
   export ZSH="$HOME/.oh-my-zsh"
 

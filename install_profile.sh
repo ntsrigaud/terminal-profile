@@ -24,34 +24,12 @@ ensure_zsh_in_path() {
 }
 
 resolve_windows_zsh_home() {
-	local zsh_bin=""
-	local candidate
-
-	for candidate in \
-		/c/msys64/usr/bin/zsh \
-		/c/msys64/usr/bin/zsh.exe \
-		/c/tools/msys64/usr/bin/zsh \
-		/c/tools/msys64/usr/bin/zsh.exe
-	do
-		if [ -x "$candidate" ]; then
-			zsh_bin="$candidate"
-			break
-		fi
-	done
-
-	if [ -z "$zsh_bin" ]; then
-		zsh_bin="$(command -v zsh || command -v zsh.exe || true)"
-	fi
-
-	if [ -n "$zsh_bin" ]; then
-		local zsh_dir msys_root
-		zsh_dir="$(dirname "$zsh_bin")"
-		msys_root="$(cd "$zsh_dir/../.." && pwd)"
-		echo "$msys_root/home/$(id -un)"
+	if [ -n "${USERPROFILE:-}" ] && command_exists cygpath; then
+		cygpath -u "$USERPROFILE"
 		return
 	fi
 
-	echo "/c/msys64/home/$(id -un)"
+	echo "$HOME"
 }
 
 clone_or_update_plugin() {

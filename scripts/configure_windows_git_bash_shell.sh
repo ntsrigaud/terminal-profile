@@ -134,9 +134,14 @@ if [ -d "\$PIXEGAMI_ZSH_BIN_DIR" ]; then
   esac
 fi
 
-if [ -z "\${ZSH_VERSION:-}" ] && [ -z "\${PIXEGAMI_SKIP_AUTO_ZSH:-}" ]; then
+if [ -z "\${ZSH_VERSION:-}" ] \
+  && [ -z "\${PIXEGAMI_SKIP_AUTO_ZSH:-}" ] \
+  && [ -z "\${BASH_EXECUTION_STRING:-}" ] \
+  && [ -z "\${PIXEGAMI_AUTO_ZSH_ACTIVE:-}" ] \
+  && [ -t 0 ] && [ -t 1 ]; then
   case "\$-" in
     *i*)
+      export PIXEGAMI_AUTO_ZSH_ACTIVE=1
       if command -v zsh >/dev/null 2>&1; then
         export SHELL="\$(command -v zsh)"
         exec zsh
@@ -151,4 +156,4 @@ fi
 $END_MARKER
 EOF
 
-echo "Configured Git Bash to auto-start zsh for interactive sessions using $zsh_binary."
+echo "Configured Git Bash zsh bridge using $zsh_binary (auto-start enabled)."

@@ -112,13 +112,19 @@ You do not need to manually install fonts or change font names in terminal setti
 	- Windows Terminal settings using [scripts/apply_windows_terminal_profile.ps1](scripts/apply_windows_terminal_profile.ps1)
 	- Ubuntu GNOME Terminal settings via [configs/terminal_profile.dconf](configs/terminal_profile.dconf)
 	- iTerm2 dynamic profile using [scripts/apply_iterm2_profile.sh](scripts/apply_iterm2_profile.sh)
-- On Windows, configures interactive Git Bash sessions to auto-start zsh so the zsh theme/plugins are active by default
+- On Windows, configures Git Bash to discover zsh reliably without forcing startup handoff (auto-zsh is opt-in to avoid startup lockups)
 - On Windows, creates a `~/bin/zsh` shim and updates `~/.bashrc` to prepend the detected zsh binary directory, ensuring `zsh` is available in normal Git Bash sessions
 - On Windows, writes zsh config/theme/plugins into the detected MSYS2 zsh home (for example `/c/msys64/home/<user>`) and normalizes `HOME` inside zsh to your Windows profile path (`/c/Users/<user>`) so `cd` and `~` stay Windows-native
 
 To temporarily stay in Bash on Windows, launch with:
 
 PIXEGAMI_SKIP_AUTO_ZSH=1 bash
+
+To enable auto-start handoff from Bash to zsh on Windows (optional):
+
+```bash
+PIXEGAMI_ENABLE_AUTO_ZSH=1 ./install_profile.sh
+```
 
 To automatically switch your default shell to zsh on Unix systems, run with:
 
